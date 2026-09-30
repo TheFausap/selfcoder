@@ -30,7 +30,6 @@ class OpenAIEmbedder(Embedder):
 
     def __init__(self, config: Config):
         self.config = config
-        self.base_url = config.base_url.rstrip("/")
         self.model = config.embedding_model
         self.batch_size = config.embedding_batch_size
         self.base_url = (config.embedding_base_url or config.base_url).rstrip("/")
@@ -57,10 +56,7 @@ class OpenAIEmbedder(Embedder):
             request = urllib.request.Request(
                 f"{self.base_url}/embeddings",
                 data=json.dumps(body).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {key}",
-                },
+                headers=headers,
                 method="POST",
             )
             try:
@@ -68,6 +64,16 @@ class OpenAIEmbedder(Embedder):
                     payload = json.loads(response.read().decode("utf-8"))
             except urllib.error.HTTPError as exc:
                 detail = exc.read().decode("utf-8", "replace")[:2000]
+                if exc.code == 400 and "Pooling type 'none' is not OAI compatible" in detail:
+                    raise LLMError(
+                        f"Embedding server at {self.base_url} uses pooling 'none', "
+                        "which is incompatible with /v1/embeddings. Restart the "
+                        "embedding server with the pooling mode required by its "
+                        "embedding model, or point SELFCODER_EMBEDDING_BASE_URL "
+                        "at a compatible embedding server. For offline lexical "
+                        "retrieval, set SELFCODER_EMBEDDING_PROVIDER=hashing and "
+                        "run selfcoder index --force."
+                    ) from exc
                 raise LLMError(f"embedding HTTP {exc.code}: {detail}") from exc
             except urllib.error.URLError as exc:
                 raise LLMError(f"embedding request failed: {exc.reason}") from exc
@@ -121,7 +127,7 @@ def build_embedder(config: Config) -> Embedder:
     """Choose an embedder, falling back to hashing if no API key is available."""
     if config.embedding_provider == "hashing":
         return HashingEmbedder(config.embedding_dim)
-    if not config.api_key:
+    if not config.api_key and not config.api_key_optional:
         # Don't crash; keep the pipeline usable and warn once.
         import sys
 

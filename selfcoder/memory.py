@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
-from selfcoder.chunker import Chunk
+from selfcoder.chunker import Chunk, chunk_file
 from selfcoder.embeddings import Embedder
 
 KINDS = ("code", "analysis", "edit", "lesson", "note", "conversation")

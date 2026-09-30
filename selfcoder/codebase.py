@@ -41,10 +41,13 @@ def read_codebase(
     max_file_bytes: int = 60_000,
     include_exts=INCLUDE_EXTS,
     ignore_dirs=IGNORE_DIRS,
+    only_paths: set[str] | None = None,
 ) -> dict[str, str]:
     """Return {relative_path: file_contents} for the whole project."""
     files: dict[str, str] = {}
     for rel, path in iter_source_files(root, include_exts, ignore_dirs):
+        if only_paths is not None and rel not in only_paths:
+            continue
         try:
             size = path.stat().st_size
             if size > max_file_bytes:

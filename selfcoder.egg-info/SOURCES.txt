@@ -1,5 +1,16 @@
 README.md
 pyproject.toml
+selfcoder/__init__.py
+selfcoder/__main__.py
+selfcoder/agent.py
+selfcoder/chunker.py
+selfcoder/cli.py
+selfcoder/codebase.py
+selfcoder/config.py
+selfcoder/embeddings.py
+selfcoder/llm.py
+selfcoder/memory.py
+selfcoder/patcher.py
 selfcoder.egg-info/PKG-INFO
 selfcoder.egg-info/SOURCES.txt
 selfcoder.egg-info/dependency_links.txt

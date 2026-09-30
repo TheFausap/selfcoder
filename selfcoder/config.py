@@ -20,6 +20,8 @@ ENV_OVERRIDES = {
     "max_tokens": "SELFCODER_MAX_TOKENS",
     "timeout": "SELFCODER_TIMEOUT",
     "embedding_model": "SELFCODER_EMBEDDING_MODEL",
+    "embedding_base_url": "SELFCODER_EMBEDDING_BASE_URL",
+    "api_key_optional": "SELFCODER_API_KEY_OPTIONAL",
     "embedding_provider": "SELFCODER_EMBEDDING_PROVIDER",
     "memory_dir": "SELFCODER_MEMORY_DIR",
     "retrieval_k": "SELFCODER_RETRIEVAL_K",

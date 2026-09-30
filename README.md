@@ -281,9 +281,10 @@ selfcoder analyze --json > review.json
 
 ### `improve`
 
-Ask the model to change its own code. It retrieves relevant chunks and memories,
-proposes an edit plan, shows you a diff, and — after confirmation — applies it
-atomically.
+Ask the model to change its own code. It retrieves relevant code and history
+associated with the same goal, proposes an edit plan, validates Python syntax,
+shows you a diff, and — after confirmation — applies it atomically. Memories
+from other improvement goals are excluded from the edit-planning prompt.
 
 ```bash
 selfcoder improve "add a --verbose flag to the index command"
@@ -410,9 +411,12 @@ Two conceptual collections share the table, distinguished by `kind`:
     backup path are stored;
   - after a failed verification and rollback, a `lesson` records what went wrong.
 
-Every prompt is built from two retrievals: the top-K code chunks matching the
-task, and the top-K memories matching the task. `retrieval_budget_chars` caps
-how much of each goes into the prompt. Retrieved items are labelled
+Prompts retrieve code and historical records separately. Improvement planning
+uses current source files selected by named functions and code retrieval, and
+only includes `edit`, `lesson`, or `note` history whose source matches the current
+goal (ignoring case and repeated whitespace). `analyze` and `ask` continue to use
+broader historical retrieval. `retrieval_budget_chars` caps how much of each
+goes into the prompt. Retrieved historical items are labelled
 `[kind] source :: label (score …)` so the model can tell code from commentary.
 
 Deduplication means it is always safe to re-run `index`, and it also means the

@@ -147,7 +147,7 @@ def cmd_recall(args, config: Config, root: Path) -> int:
         if hit.label:
             header += f" :: {hit.label}"
         print(f"{bold(header)}  {dim(f'score={hit.score:.3f}')}")
-        print(hit.text[: args.width])
+        print(hit.text[: max(20, args.width)])
         if len(hit.text) > args.width:
             print(dim("  ..."))
         print()
@@ -274,6 +274,7 @@ def cmd_improve(args, config: Config, root: Path) -> int:
     plan, edits = propose(
         client, store, args.goal,
         k=config.retrieval_k, budget=config.retrieval_budget_chars,
+        root=root, max_file_bytes=config.max_file_bytes,
     )
 
     print()
@@ -304,7 +305,7 @@ def cmd_improve(args, config: Config, root: Path) -> int:
 
     print()
     print(bold(f"Proposed diff ({len(edits)} edit(s))"))
-    report = patcher.preview(edits)
+    report = patcher.preview(edits, check_syntax=not args.allow_syntax_errors)
     print_diff(report.diff)
 
     if args.dry_run:
@@ -327,7 +328,7 @@ def cmd_improve(args, config: Config, root: Path) -> int:
     if args.verify:
         print()
         print(dim(f"Running verification: {args.verify}"))
-        result = subprocess.run(args.verify, shell=True, cwd=root)
+        result = subprocess.run(args.verify, cwd=root, shell=False)
         if result.returncode != 0:
             print(red(f"\nVerification failed (exit {result.returncode}). Rolling back."))
             if report.backup_dir:
@@ -350,8 +351,11 @@ def cmd_improve(args, config: Config, root: Path) -> int:
         if memory_id is not None:
             print(dim(f"Stored edit as memory #{memory_id}."))
         # Re-index touched files so knowledge stays in sync.
-        files = read_codebase(root, max_file_bytes=config.max_file_bytes)
-        index_codebase(store, files, verbose=False)
+        files_to_reindex = read_codebase(
+            root, max_file_bytes=config.max_file_bytes,
+            only_paths=set(report.changed) | set(report.created),
+        )
+        index_codebase(store, files_to_reindex, verbose=False)
 
     if report.backup_dir:
         print()
@@ -364,7 +368,7 @@ def cmd_improve(args, config: Config, root: Path) -> int:
 def cmd_apply(args, config: Config, root: Path) -> int:
     patcher = Patcher(root)
     edits = load_plan(Path(args.plan))
-    report = patcher.preview(edits)
+    report = patcher.preview(edits, check_syntax=not args.allow_syntax_errors)
     print(bold(f"Diff for {len(edits)} edit(s)"))
     print_diff(report.diff)
 
@@ -460,6 +464,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="command", required=True)
 
+    sub.add_parser("help", help="show this help message")
+
     p = sub.add_parser("index", help="chunk and embed the codebase into the memory store")
     p.add_argument("--force", action="store_true", help="re-embed even unchanged files")
     p.add_argument("-q", "--quiet", action="store_true")
@@ -540,7 +546,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.command == "help":
+        parser.print_help()
+        return 0
 
     config = Config.load()
     if getattr(args, "model", None):

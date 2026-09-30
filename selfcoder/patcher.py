@@ -151,8 +151,11 @@ class Patcher:
 
     # ------------------------------------------------------------------ preview
 
-    def preview(self, edits: list[Edit]) -> Report:
-        return self._build_report(self.plan(edits))
+    def preview(self, edits: list[Edit], *, check_syntax: bool = False) -> Report:
+        planned = self.plan(edits)
+        if check_syntax:
+            self._check_syntax(planned)
+        return self._build_report(planned)
 
     def _build_report(self, planned: dict[str, str | None]) -> Report:
         report = Report()
