@@ -55,6 +55,10 @@ class Edit:
             raise PatchError(f"{edit.file}: a 'write' edit needs 'content'")
         if action == "patch" and (edit.find is None or edit.replace is None):
             raise PatchError(f"{edit.file}: a 'patch' edit needs both 'find' and 'replace'")
+        if action == "patch" and (
+            not isinstance(edit.find, str) or not isinstance(edit.replace, str)
+        ):
+            raise PatchError(f"{edit.file}: 'find' and 'replace' must be strings")
         return edit
 
 
@@ -134,6 +138,12 @@ class Patcher:
             if base is None:
                 raise PatchError(f"{rel}: cannot patch a file that is being deleted")
 
+            if not isinstance(edit.find, str) or not edit.find.strip():
+                raise PatchError(
+                    f"{rel}: 'find' must contain non-whitespace source text; "
+                    "a blank line or empty string cannot identify an insertion point. "
+                    "Include surrounding code and preserve it in 'replace'."
+                )
             occurrences = base.count(edit.find)
             if occurrences == 0:
                 raise PatchError(
@@ -142,7 +152,9 @@ class Patcher:
                 )
             if occurrences > 1:
                 raise PatchError(
-                    f"{rel}: the 'find' snippet matches {occurrences} times; make it more specific."
+                    f"{rel}: the 'find' snippet matches {occurrences} times; make it more specific. "
+                    "Include surrounding source lines until it matches exactly once. "
+                    f"Snippet (escaped): {edit.find[:400]!r}"
                 )
 
             planned[rel] = base.replace(edit.find, edit.replace, 1)

@@ -328,7 +328,10 @@ def cmd_improve(args, config: Config, root: Path) -> int:
     if args.verify:
         print()
         print(dim(f"Running verification: {args.verify}"))
-        result = subprocess.run(args.verify, cwd=root, shell=False)
+        verify = args.verify
+        if isinstance(verify, str):
+            verify = verify.split()
+        result = subprocess.run(verify, cwd=root, shell=False)
         if result.returncode != 0:
             print(red(f"\nVerification failed (exit {result.returncode}). Rolling back."))
             if report.backup_dir:
@@ -359,7 +362,7 @@ def cmd_improve(args, config: Config, root: Path) -> int:
 
     if report.backup_dir:
         print()
-        print(dim(f"Roll back with: selfcoder rollback {report.backup_dir}"))
+        print(dim(f"Roll back with: selfcoder rollback {report.backup_dir.relative_to(root)}"))
 
     store.close()
     return 0

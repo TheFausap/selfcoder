@@ -25,6 +25,8 @@ Rules:
    Use "write" only for new files. Preserve unrelated code and behaviour.
 4. For a "patch", the "find" string MUST appear in the current file exactly once,
    character for character, including indentation and blank lines.
+   Never use an empty string or only whitespace as 'find'. To insert code,
+   anchor on unique surrounding source lines and retain them in 'replace'.
 5. Never leave placeholders, "...", elisions or TODO stubs. Every file you write
    must be complete and syntactically valid Python.
 6. Standard library only unless the goal explicitly requires a dependency.
@@ -74,6 +76,11 @@ Respond with a single JSON object:
 
 # --------------------------------------------------------------- retrieval
 
+
+def truncate_field(field, max_len=100):
+    if len(field) > max_len:
+        return f"{field[:max_len]}..."
+    return field
 
 def retrieve(
     store: MemoryStore,
@@ -218,7 +225,9 @@ def propose(
             if root is None or attempt == 1:
                 raise
             files = read_codebase(root, max_file_bytes=max_file_bytes)
-            current = _current_code(files, [edit.file for edit in edits], budget)
+            targets = [item.get("file") for item in raw
+                       if isinstance(item, dict) and isinstance(item.get("file"), str)]
+            current = _current_code(files, targets, budget)
             messages.extend([
                 {"role": "assistant", "content": json.dumps(plan)},
                 {"role": "user", "content": (
@@ -229,6 +238,9 @@ def propose(
                     "Discard any changes addressing other goals, even if they appear "
                     "in the failed plan or source excerpts. Copy find snippets exactly "
                     "from current source, including whitespace. Do not invent source text "
+                    "or use blank lines as insertion anchors. For ambiguous matches, "
+                    "extend 'find' with surrounding code until it is unique, preserving "
+                    "that context in 'replace'. Do not select the first match automatically "
                     "or replace a whole file to bypass a failed patch."
                 )},
             ])

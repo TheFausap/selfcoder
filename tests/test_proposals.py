@@ -141,6 +141,34 @@ class ProposalTests(unittest.TestCase):
         self.assertEqual(client.chat_json.call_count, 2)
         self.assertEqual(self.source.read_text(), self.original)
 
+    def test_blank_insertion_anchor_is_repaired(self):
+        for find in ("", "\n", "    "):
+            with self.subTest(find=find):
+                client = Mock()
+                client.chat_json.side_effect = [self.plan(find),
+                                                self.plan("    return 'current'")]
+                _, edits = self.propose(client)
+                repair = client.chat_json.call_args.args[0][-1]["content"]
+                self.assertIn("non-whitespace source text", repair)
+                self.assertIn(self.original, repair)
+                self.assertEqual(edits[0].find, "    return 'current'")
+                self.assertEqual(self.source.read_text(), self.original)
+
+    def test_ambiguous_anchor_is_repaired_with_unique_context(self):
+        self.source.write_text(self.original + "\ndef other():\n    return 'current'\n")
+        before = self.source.read_text()
+        client = Mock()
+        precise = self.plan(self.original.rstrip())
+        precise["edits"][0]["replace"] = "def verify():\n    return 'updated'"
+        client.chat_json.side_effect = [self.plan("    return 'current'"), precise]
+        _, edits = self.propose(client)
+        repair = client.chat_json.call_args.args[0][-1]["content"]
+        self.assertIn("matches 2 times", repair)
+        self.assertIn("Snippet (escaped)", repair)
+        planned = Patcher(self.root).plan(edits)["example.py"]
+        self.assertIn("def other():\n    return 'current'", planned)
+        self.assertEqual(self.source.read_text(), before)
+
 
 if __name__ == "__main__":
     unittest.main()
