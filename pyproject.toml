@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "selfcoder"
+version = "0.2.0"
+description = "An LLM CLI that reads, reviews and rewrites its own source code using a filesystem-backed vector memory."
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+selfcoder = "selfcoder.cli:main"
+
+[tool.setuptools]
+packages = ["selfcoder"]
