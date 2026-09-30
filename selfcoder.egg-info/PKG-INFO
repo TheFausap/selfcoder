@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: selfcoder
+Version: 0.2.0
+Summary: An LLM CLI that reads, reviews and rewrites its own source code using a filesystem-backed vector memory.
+Requires-Python: >=3.9

@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+selfcoder.egg-info/PKG-INFO
+selfcoder.egg-info/SOURCES.txt
+selfcoder.egg-info/dependency_links.txt
+selfcoder.egg-info/entry_points.txt
+selfcoder.egg-info/top_level.txt
