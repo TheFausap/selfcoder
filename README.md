@@ -263,7 +263,7 @@ with the model IDs served by your servers if they differ:
 ```json
 {
   "base_url": "http://localhost:8083/v1",
-  "model": "gemma4-coder",
+  "model": "gemma4-agent",
   "coding_url": "http://localhost:8080/v1",
   "coding_model": "gemma4-coder"
 }
