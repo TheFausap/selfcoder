@@ -251,8 +251,14 @@ Create `~/.config/selfcoder/config.json`:
 `selfcoder config` to print the effective configuration (the API key is shown
 only as a boolean).
 
-To analyze with V2 on port 8083 and generate edits with V1 on port 8080,
-set these fields in your config (use the model IDs served by your servers):
+The tested split configuration uses these two models:
+
+- **Analysis / V2** (port 8083): `yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2`
+- **Coding / V1** (port 8080): `yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF`
+
+To use this split, set these fields in your config. Both servers in the
+tested setup expose the API model alias `gemma4-coder`; replace that alias
+with the model IDs served by your servers if they differ:
 
 ```json
 {
