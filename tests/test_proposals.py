@@ -39,6 +39,15 @@ class ProposalTests(unittest.TestCase):
         self.assertIn("+    return 'updated'", Patcher(self.root).preview(edits).diff)
         self.assertEqual(self.source.read_text(), self.original)
 
+    def test_analysis_findings_are_passed_to_coder(self):
+        self.store.add("analysis", "Review verify: check the returned value", source="general")
+        client = Mock()
+        client.chat_json.return_value = self.plan("    return 'current'")
+        self.propose(client)
+        prompt = client.chat_json.call_args.args[0][1]["content"]
+        self.assertIn("Review verify: check the returned value", prompt)
+        self.assertIn("implement only the current goal", prompt)
+
     def test_invalid_snippet_gets_one_repair_without_writes(self):
         client = Mock()
         client.chat_json.side_effect = [self.plan("invented snippet"),

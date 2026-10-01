@@ -13,6 +13,20 @@ from selfcoder.patcher import Edit
 
 
 class ImproveTests(unittest.TestCase):
+    def test_improve_uses_coding_config(self):
+        config = Config(base_url="http://analysis/v1", model="v2",
+                        coding_url="http://coding/v1", coding_model="v1")
+        args = build_parser().parse_args(["improve", "Update value", "--dry-run"])
+        with patch("selfcoder.cli.open_store", return_value=Mock()) as open_store, \
+             patch("selfcoder.cli.LLMClient") as client, \
+             patch("selfcoder.cli.propose", return_value=({}, [])), \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cmd_improve(args, config, Path.cwd()), 0)
+        resolved = client.call_args.args[0]
+        self.assertEqual(resolved.base_url, "http://coding/v1")
+        self.assertEqual(resolved.model, "v1")
+        self.assertIs(open_store.call_args.args[0], config)
+
     def test_apply_reindexes_only_touched_readable_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

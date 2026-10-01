@@ -211,6 +211,8 @@ somewhere other than `base_url`:
 | `SELFCODER_CONFIG` | config file path | `~/.config/selfcoder/config.json` |
 | `SELFCODER_BASE_URL` | `base_url` | `https://api.openai.com/v1` |
 | `SELFCODER_MODEL` | `model` | `gpt-4o-mini` |
+| `SELFCODER_CODING_URL` | `coding_url` | falls back to `base_url` |
+| `SELFCODER_CODING_MODEL` | `coding_model` | falls back to `model` |
 | `SELFCODER_API_KEY_ENV` | name of the env var holding the key | `OPENAI_API_KEY` |
 | `SELFCODER_API_KEY_OPTIONAL` | `api_key_optional` | `false` |
 | `SELFCODER_TEMPERATURE` | `temperature` | `0.2` |
@@ -248,6 +250,29 @@ Create `~/.config/selfcoder/config.json`:
 `embedding_dim` is only used by the offline hashing embedder. Run
 `selfcoder config` to print the effective configuration (the API key is shown
 only as a boolean).
+
+To analyze with V2 on port 8083 and generate edits with V1 on port 8080,
+set these fields in your config (use the model IDs served by your servers):
+
+```json
+{
+  "base_url": "http://localhost:8083/v1",
+  "model": "gemma4-coder",
+  "coding_url": "http://localhost:8080/v1",
+  "coding_model": "gemma4-coder"
+}
+```
+
+`analyze` and `ask` use `base_url` / `model`; `improve` uses the coding
+settings, including retries. When unset, each coding field falls back
+independently to its chat counterpart. Both clients share API key and
+generation settings. If embeddings were served at the old `base_url`, set
+`embedding_base_url` explicitly before changing it.
+
+Run `selfcoder analyze --focus "your goal"` followed by
+`selfcoder improve "your goal" --dry-run`. Saved analysis findings are
+retrieved as advice for the coding model alongside current source excerpts.
+`improve` does not automatically run a new analysis.
 
 ---
 

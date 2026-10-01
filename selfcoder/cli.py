@@ -263,14 +263,15 @@ def cmd_analyze(args, config: Config, root: Path) -> int:
 
 
 def cmd_improve(args, config: Config, root: Path) -> int:
-    client = LLMClient(config)
+    coding = config.for_coding()
+    client = LLMClient(coding)
     patcher = Patcher(root)
     store = open_store(config, root)
 
     if store.count() == 0:
         print(yellow("Memory store is empty. Run `selfcoder index` first for best results."))
 
-    print(dim(f"Asking {config.model} how to: {args.goal}"))
+    print(dim(f"Asking {coding.model} ({coding.base_url}) how to: {args.goal}"))
     plan, edits = propose(
         client, store, args.goal,
         k=config.retrieval_k, budget=config.retrieval_budget_chars,
@@ -414,6 +415,8 @@ def cmd_status(args, config: Config, root: Path) -> int:
 
     print(bold("Project root "), root)
     print(bold("Chat model   "), config.model, dim(f"({config.base_url})"))
+    coding = config.for_coding()
+    print(bold("Coding model "), coding.model, dim(f"({coding.base_url})"))
     print(bold("Embeddings   "), config.embedding_provider, dim(f"({config.embedding_model})"))
     print(bold("API key      "),
           green("present") if config.api_key else red(f"missing (${config.api_key_env})"))

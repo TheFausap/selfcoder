@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 DEFAULT_CONFIG_PATH = Path(
@@ -15,6 +15,8 @@ DEFAULT_CONFIG_PATH = Path(
 ENV_OVERRIDES = {
     "base_url": "SELFCODER_BASE_URL",
     "model": "SELFCODER_MODEL",
+    "coding_url": "SELFCODER_CODING_URL",
+    "coding_model": "SELFCODER_CODING_MODEL",
     "api_key_env": "SELFCODER_API_KEY_ENV",
     "temperature": "SELFCODER_TEMPERATURE",
     "max_tokens": "SELFCODER_MAX_TOKENS",
@@ -33,6 +35,8 @@ class Config:
     # chat model
     base_url: str = "https://api.openai.com/v1"
     model: str = "gpt-4o-mini"
+    coding_url: str | None = None
+    coding_model: str | None = None
     api_key_env: str = "OPENAI_API_KEY"
     temperature: float = 0.2
     max_tokens: int = 8192
@@ -55,6 +59,11 @@ class Config:
     @property
     def api_key(self) -> str | None:
         return os.environ.get(self.api_key_env)
+
+    def for_coding(self) -> "Config":
+        """Resolve coding overrides without changing analysis or embeddings."""
+        return replace(self, base_url=self.coding_url or self.base_url,
+                       model=self.coding_model or self.model)
 
     @classmethod
     def load(cls, path: Path = DEFAULT_CONFIG_PATH) -> "Config":

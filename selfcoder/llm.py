@@ -16,6 +16,7 @@ class LLMError(RuntimeError):
 
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
+_THINK_RE = re.compile(r"<(think|analysis|reasoning)>.*?</\1>", re.DOTALL | re.IGNORECASE)
 
 
 def parse_json(text: str) -> dict:
@@ -24,23 +25,30 @@ def parse_json(text: str) -> dict:
     if not text:
         raise LLMError("Model returned an empty response.")
 
-    match = _FENCE_RE.search(text)
-    if match:
-        text = match.group(1).strip()
-
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-
-    start, end = text.find("{"), text.rfind("}")
-    if start != -1 and end > start:
+    original = text
+    text = _THINK_RE.sub("", text).strip()
+    decoder = json.JSONDecoder()
+    candidates = [text] + [match.group(1).strip() for match in _FENCE_RE.finditer(text)]
+    for candidate in candidates:
         try:
-            return json.loads(text[start : end + 1])
-        except json.JSONDecodeError as exc:
-            raise LLMError(f"Model did not return valid JSON: {exc}") from exc
+            value = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return value
+        raise LLMError("Model returned JSON, but it was not an object.")
 
-    raise LLMError("Model did not return a JSON object.")
+    # Decode from each opening brace instead of swallowing all surrounding
+    # prose (or multiple objects) between the first and last brace.
+    for match in re.finditer(r"\{", text):
+        try:
+            value, _ = decoder.raw_decode(text, match.start())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return value
+    preview = original[:500]
+    raise LLMError(f"Model did not return a JSON object. Response preview: {preview!r}")
 
 
 class LLMClient:
@@ -78,10 +86,7 @@ class LLMClient:
         request = urllib.request.Request(
             self.config.base_url.rstrip("/") + "/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {key}",
-            },
+            headers=headers,
             method="POST",
         )
 
@@ -97,7 +102,22 @@ class LLMClient:
             raise LLMError(f"Request timed out after {self.config.timeout}s.") from exc
 
         try:
-            return body["choices"][0]["message"]["content"] or ""
+            choice = body["choices"][0]
+            message = choice["message"]
+            content = message.get("content") or ""
+            if choice.get("finish_reason") == "length":
+                raise LLMError(
+                    "Model reached max_tokens before completing its response. "
+                    "Increase SELFCODER_MAX_TOKENS or reduce reasoning on the model server. "
+                    f"Response preview: {content[:500]!r}"
+                )
+            if not content and message.get("reasoning_content"):
+                raise LLMError(
+                    "Model returned reasoning_content but no final content. "
+                    "Check the model server's reasoning/chat-template settings. "
+                    f"Reasoning preview: {str(message['reasoning_content'])[:500]!r}"
+                )
+            return content
         except (KeyError, IndexError, TypeError) as exc:
             raise LLMError(f"Unexpected response shape: {str(body)[:500]}") from exc
 
